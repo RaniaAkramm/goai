@@ -135,3 +135,11 @@ describe("json locator", () => {
     expect(locateError('{"a":[1,{"b":"x"}]}')).toBeUndefined();
   });
 });
+
+import { CHAT_SYSTEM, parseInline } from "../lib/chatPrompt";
+describe("chat widget prompt", () => {
+  it("lists all 8 tools, studio and builder", () => {
+    for (const s of ["/tools/json-formatter", "/tools/hash", "/tools/regex", "/studio", "/builder"]) expect(CHAT_SYSTEM).toContain(s);
+  });
+  it("parses links", () => { expect(parseInline("see [Regex](/tools/regex) now")[1]).toEqual({ t: "link", v: "Regex", href: "/tools/regex" }); });
+});
