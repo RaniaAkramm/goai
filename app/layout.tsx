@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { ChatWidget } from "@/components/chat/ChatWidget";
 import { Analytics } from "@vercel/analytics/next";
 
 const DESC = "Free AI tools and developer tools in your browser: private in-browser AI chat, AI code assistant, text summarizer and translator (AI Studio), JSON formatter, regex tester, diff and a website builder with ZIP export. No sign-up, no uploads, no paid APIs.";
@@ -25,6 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Header />
         <main id="main">{children}</main>
         <Footer />
+        <ChatWidget />
         <Analytics />
       </body>
     </html>
