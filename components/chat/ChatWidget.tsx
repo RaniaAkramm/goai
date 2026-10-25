@@ -1,11 +1,11 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { CHAT_SYSTEM, CHAT_MODELS, parseInline } from "@/lib/chatPrompt";
-import type { Engine, Progress } from "@/lib/studio/engine";
+import { CHAT_SYSTEM, CHAT_LOAD_TIMEOUT, pickChatModel, parseInline } from "@/lib/chatPrompt";
+import type { Engine } from "@/lib/studio/engine";
 import type { Msg } from "@/lib/studio/prompts";
 
-type Status = "idle" | "checking" | "loading" | "ready" | "error";
+type Status = "idle" | "loading" | "ready" | "error";
 const GREETING = "Hi! I'm the GoAI.foo assistant. Ask me about the developer tools, AI Studio or the Project Builder.";
 
 function Rich({ text }: { text: string }) {
@@ -19,35 +19,44 @@ export function ChatWidget() {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [status, setStatus] = useState<Status>("idle");
-  const [progress, setProgress] = useState<Progress>({ progress: 0, text: "" });
-  const [note, setNote] = useState("");
+  const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
-  const eng = useRef<Engine | null>(null); const abort = useRef<AbortController | null>(null);
+  const eng = useRef<Engine | null>(null); const loading = useRef<Promise<Engine | null> | null>(null);
+  const abort = useRef<AbortController | null>(null);
   const list = useRef<HTMLDivElement>(null); const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => { list.current?.scrollTo({ top: list.current.scrollHeight }); }, [msgs, progress]);
+  useEffect(() => { list.current?.scrollTo({ top: list.current.scrollHeight }); }, [msgs, status]);
   useEffect(() => { if (!open) return; inputRef.current?.focus(); const k = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false); addEventListener("keydown", k); return () => removeEventListener("keydown", k); }, [open]);
+  // Start loading quietly only once the panel is opened (visitors who never open chat download nothing).
+  useEffect(() => { if (open) void ensureEngine(); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function ensureEngine(): Promise<Engine | null> {
-    if (eng.current) return eng.current;
-    setStatus("checking");
-    try {
-      const e = await import("@/lib/studio/engine"); // lazy: engine + model libs load only when chatting
-      const gpu = await e.detectWebGPU();
-      const id = gpu.ok ? CHAT_MODELS.webgpu : CHAT_MODELS.cpu;
-      setNote(gpu.ok ? "Running on your GPU (WebGPU)." : "WebGPU isn't available here, so a smaller CPU model is used. Replies will be slower and simpler.");
-      setStatus("loading");
-      eng.current = await e.loadEngine(id, setProgress);
-      setStatus("ready"); return eng.current;
-    } catch (err) {
-      setStatus("error"); setNote("Couldn't load the AI model in this browser (" + String((err as Error)?.message ?? err).slice(0, 120) + "). Try a recent Chrome or Edge, or browse the tools directly.");
-      return null;
-    }
+  function ensureEngine(): Promise<Engine | null> {
+    if (eng.current) return Promise.resolve(eng.current);
+    if (loading.current) return loading.current;
+    setStatus("loading"); setErr("");
+    loading.current = (async () => {
+      try {
+        const e = await import("@/lib/studio/engine"); // lazy: engine + model libs load only when chatting
+        const gpu = await e.detectWebGPU();
+        const nav = navigator as Navigator & { deviceMemory?: number; userAgentData?: { mobile?: boolean } };
+        const mobile = nav.userAgentData?.mobile ?? /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
+        const id = pickChatModel({ webgpu: gpu.ok, mobile, memGB: nav.deviceMemory });
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const timeout = new Promise<never>((_, rej) => { timer = setTimeout(() => rej(new Error("timeout")), CHAT_LOAD_TIMEOUT); });
+        try { eng.current = await Promise.race([e.loadEngine(id, () => {}), timeout]); } finally { clearTimeout(timer); }
+        setStatus("ready"); return eng.current;
+      } catch (x) {
+        console.warn("[chat] model load failed", x);
+        setStatus("error");
+        setErr(String((x as Error)?.message) === "timeout" ? "The assistant is taking too long to load on this connection." : "The assistant couldn't load in this browser.");
+        return null;
+      } finally { loading.current = null; }
+    })();
+    return loading.current;
   }
 
-  async function send() {
-    const q = input.trim(); if (!q || busy) return;
-    setInput(""); const next: Msg[] = [...msgs, { role: "user", content: q }]; setMsgs(next); setBusy(true);
+  async function answer(next: Msg[]) {
+    setBusy(true);
     const e = await ensureEngine(); if (!e) { setBusy(false); return; }
     const { trimHistory } = await import("@/lib/studio/prompts");
     setMsgs([...next, { role: "assistant", content: "" }]);
@@ -56,10 +65,19 @@ export function ChatWidget() {
       const out = await e.generate(trimHistory([{ role: "system", content: CHAT_SYSTEM }, ...next], 5000), { maxTokens: 320, temperature: 0.4, signal: abort.current.signal,
         onToken: (full) => setMsgs([...next, { role: "assistant", content: full }]) });
       setMsgs([...next, { role: "assistant", content: out || "(no reply)" }]);
-    } catch (err) { setMsgs([...next, { role: "assistant", content: "Sorry, something went wrong: " + String(err).slice(0, 100) }]); }
+    } catch (x) { setMsgs([...next, { role: "assistant", content: "Sorry, something went wrong: " + String(x).slice(0, 100) }]); }
     finally { setBusy(false); abort.current = null; }
   }
+  function send() {
+    const q = input.trim(); if (!q || busy) return;
+    setInput(""); const next: Msg[] = [...msgs, { role: "user", content: q }]; setMsgs(next); void answer(next); // queued until the model is ready
+  }
+  function retry() {
+    const last = msgs[msgs.length - 1];
+    if (last?.role === "user") void answer(msgs); else void ensureEngine();
+  }
   const clear = () => { abort.current?.abort(); setMsgs([]); };
+  const waiting = busy && status === "loading" && msgs[msgs.length - 1]?.role === "user";
 
   return (
     <>
@@ -78,12 +96,9 @@ export function ChatWidget() {
           <div className="cw-list" ref={list} aria-live="polite">
             <div className="cw-msg assistant"><Rich text={GREETING} /></div>
             {msgs.map((m, i) => <div key={i} className={"cw-msg " + m.role}>{m.content ? <Rich text={m.content} /> : <span className="cw-dots" aria-label="Thinking"><i/><i/><i/></span>}</div>)}
-            {(status === "checking" || status === "loading") && (
-              <div className="cw-status"><div>{status === "checking" ? "Checking your browser…" : progress.text || "Preparing model…"}</div>
-                <div className="cw-bar"><span style={{ width: Math.round(progress.progress * 100) + "%" }} /></div>
-                <small>First time only: the model downloads once and is cached for next visits.</small></div>
-            )}
-            {note && status !== "loading" && status !== "checking" && <div className={"cw-note" + (status === "error" ? " err" : "")}>{note}</div>}
+            {waiting && <div className="cw-msg assistant"><span className="cw-dots" aria-label="Thinking"><i/><i/><i/></span></div>}
+            {status === "loading" && <div className="cw-calm">Runs privately on your device: a small AI model loads once, then it&apos;s instant.</div>}
+            {status === "error" && <div className="cw-note err">{err} <button type="button" className="btn btn-ghost btn-sm cw-retry" onClick={retry}>Retry</button></div>}
           </div>
           <form className="cw-form" onSubmit={(e) => { e.preventDefault(); send(); }}>
             <textarea id="cw-input" ref={inputRef} rows={1} value={input} placeholder="Ask about GoAI.foo…" aria-label="Message" onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }} />

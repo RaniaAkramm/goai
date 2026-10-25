@@ -1,5 +1,5 @@
 export type ModelKind = "webllm" | "transformers";
-export type ModelInfo = { id: string; name: string; kind: ModelKind; sizeMB: number; tasks: ("chat" | "code" | "text" | "summarize" | "translate")[]; note: string; recommended?: boolean };
+export type ModelInfo = { id: string; name: string; kind: ModelKind; sizeMB: number; tasks: ("chat" | "code" | "text" | "summarize" | "translate")[]; note: string; recommended?: boolean; dtype?: string };
 
 /** Free, open models. WebLLM models need WebGPU; Transformers.js models run on WASM (CPU) in any modern browser. Sizes = approximate download/VRAM. */
 export const MODELS: ModelInfo[] = [
@@ -9,6 +9,7 @@ export const MODELS: ModelInfo[] = [
   { id: "Qwen2.5-1.5B-Instruct-q4f16_1-MLC", name: "Qwen2.5 1.5B Instruct", kind: "webllm", sizeMB: 1630, tasks: ["chat", "text", "code"], note: "Smarter answers; needs a decent GPU." },
   { id: "Llama-3.2-3B-Instruct-q4f16_1-MLC", name: "Llama 3.2 3B Instruct", kind: "webllm", sizeMB: 2264, tasks: ["chat", "text", "code"], note: "Highest quality here; desktop GPU recommended." },
   { id: "HuggingFaceTB/SmolLM2-360M-Instruct", name: "SmolLM2 360M (CPU)", kind: "transformers", sizeMB: 390, tasks: ["chat", "text", "code"], note: "No WebGPU needed. Slower and simpler answers.", recommended: true },
+  { id: "HuggingFaceTB/SmolLM2-135M-Instruct", name: "SmolLM2 135M (phone)", kind: "transformers", sizeMB: 131, dtype: "q8", tasks: ["chat", "text"], note: "Tiny and phone-friendly. Simple answers." },
   { id: "Xenova/distilbart-cnn-6-6", name: "DistilBART summarizer (CPU)", kind: "transformers", sizeMB: 300, tasks: ["summarize"], note: "Dedicated summarization model." },
   { id: "Xenova/opus-mt-mul-en", name: "OPUS-MT many→English (CPU)", kind: "transformers", sizeMB: 310, tasks: ["translate"], note: "Dedicated translation to English." },
 ];

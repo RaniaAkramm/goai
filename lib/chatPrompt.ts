@@ -11,7 +11,14 @@ AI Studio (/studio): free AI models running on the device (WebGPU, or CPU fallba
 Other pages: [About](/about), [Privacy](/privacy), [Terms](/terms).
 If you do not know something about the site, say so and suggest the closest page. Do not invent features or prices.`;
 
-export const CHAT_MODELS = { webgpu: "Qwen2.5-0.5B-Instruct-q4f16_1-MLC", cpu: "HuggingFaceTB/SmolLM2-360M-Instruct" } as const;
+export const CHAT_MODELS = { desktop: "Qwen2.5-0.5B-Instruct-q4f16_1-MLC", small: "HuggingFaceTB/SmolLM2-135M-Instruct" } as const;
+/** Load timeout for the chat model (ms). */
+export const CHAT_LOAD_TIMEOUT = 180_000;
+/** The ~945 MB WebGPU model only on capable desktops; phones / low memory / no WebGPU get the ~131 MB model. */
+export function pickChatModel(env: { webgpu: boolean; mobile: boolean; memGB?: number }): string {
+  if (env.webgpu && !env.mobile && (env.memGB ?? 8) >= 8) return CHAT_MODELS.desktop;
+  return CHAT_MODELS.small;
+}
 
 /** Render minimal safe Markdown: links to internal pages, bold, inline code. Returns segments. */
 export type Seg = { t: "text" | "link" | "bold" | "code"; v: string; href?: string };

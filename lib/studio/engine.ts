@@ -84,7 +84,7 @@ export async function loadEngine(id: string, onProgress: (p: Progress) => void):
   };
   const task = m.tasks.includes("summarize") ? "summarization" : m.tasks.includes("translate") ? "translation" : "text-generation";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const pipe: any = await (t.pipeline as any)(task, m.id, { dtype: "q4", device: "wasm", progress_callback }).catch(() => (t.pipeline as any)(task, m.id, { progress_callback }));
+  const pipe: any = await (t.pipeline as any)(task, m.id, { dtype: m.dtype ?? "q4", device: "wasm", progress_callback }).catch(() => (t.pipeline as any)(task, m.id, { progress_callback }));
   const runTask = async (kind: "summarize" | "translate", text: string): Promise<string> => {
     const r = await pipe(text.slice(0, 3000), kind === "summarize" ? { max_new_tokens: 160 } : {});
     return r?.[0]?.summary_text ?? r?.[0]?.translation_text ?? "";
