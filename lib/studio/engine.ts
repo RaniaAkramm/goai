@@ -8,12 +8,19 @@ export interface Engine { model: ModelInfo; generate(msgs: Msg[], o?: GenOpts): 
 
 export const isMock = () => typeof window !== "undefined" && (localStorage.getItem("goai-studio-mock") === "1" || /[?&]mock=1/.test(location.search));
 
-export async function detectWebGPU(): Promise<{ ok: boolean; reason: string }> {
-  if (isMock()) return { ok: localStorage.getItem("goai-studio-mock-gpu") !== "0", reason: "Simulated (test mode)" };
-  const gpu = (navigator as Navigator & { gpu?: { requestAdapter(): Promise<unknown> } }).gpu;
+type GPUAdapterLike = { features?: { has(f: string): boolean } };
+/** WebGPU is only "ok" when the adapter supports shader-f16: all WebLLM models here are q4f16 builds and fail with
+ *  "extension f16 is not allowed" otherwise. Without it we use the CPU (Transformers.js) path. */
+export async function detectWebGPU(): Promise<{ ok: boolean; reason: string; f16?: boolean }> {
+  if (isMock()) { const ok = localStorage.getItem("goai-studio-mock-gpu") !== "0" && localStorage.getItem("goai-studio-mock-f16") !== "0"; return { ok, f16: ok, reason: "Simulated (test mode)" }; }
+  const gpu = (navigator as Navigator & { gpu?: { requestAdapter(): Promise<GPUAdapterLike | null> } }).gpu;
   if (!gpu) return { ok: false, reason: "This browser does not expose WebGPU." };
-  try { const a = await gpu.requestAdapter(); return a ? { ok: true, reason: "WebGPU adapter found." } : { ok: false, reason: "No compatible GPU adapter was found." }; }
-  catch (e) { return { ok: false, reason: "WebGPU failed to initialise: " + String(e) }; }
+  try {
+    const a = await gpu.requestAdapter();
+    if (!a) return { ok: false, reason: "No compatible GPU adapter was found." };
+    if (!a.features?.has("shader-f16")) return { ok: false, f16: false, reason: "GPU found, but it lacks shader-f16 support; using the CPU models." };
+    return { ok: true, f16: true, reason: "WebGPU adapter with shader-f16 found." };
+  } catch (e) { return { ok: false, reason: "WebGPU failed to initialise: " + String(e) }; }
 }
 
 export async function isCached(m: ModelInfo): Promise<boolean> {
@@ -75,31 +82,44 @@ export async function loadEngine(id: string, onProgress: (p: Progress) => void):
       async unload() { await eng.unload(); },
     };
   }
-  // Transformers.js (WASM / CPU)
-  const t = await import("@huggingface/transformers");
-  const files = new Map<string, [number, number]>();
-  const progress_callback = (p: { status: string; file?: string; loaded?: number; total?: number }) => {
-    if (p.status === "progress" && p.file && p.total) { files.set(p.file, [p.loaded ?? 0, p.total]); let a = 0, b = 0; for (const [l, tt] of files.values()) { a += l; b += tt; } onProgress({ progress: b ? a / b : 0, text: `Downloading ${m.name}… ${Math.round((a / 1048576))} / ${Math.round(b / 1048576)} MB` }); }
-    if (p.status === "ready") onProgress({ progress: 1, text: `${m.name} ready` });
-  };
+  return loadTransformersWorker(m, onProgress);
+}
+
+/** Transformers.js (WASM / CPU) in a Web Worker so loading and generation never block the UI thread. */
+function loadTransformersWorker(m: ModelInfo, onProgress: (p: Progress) => void): Promise<Engine> {
   const task = m.tasks.includes("summarize") ? "summarization" : m.tasks.includes("translate") ? "translation" : "text-generation";
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const pipe: any = await (t.pipeline as any)(task, m.id, { dtype: m.dtype ?? "q4", device: "wasm", progress_callback }).catch(() => (t.pipeline as any)(task, m.id, { progress_callback }));
-  const runTask = async (kind: "summarize" | "translate", text: string): Promise<string> => {
-    const r = await pipe(text.slice(0, 3000), kind === "summarize" ? { max_new_tokens: 160 } : {});
-    return r?.[0]?.summary_text ?? r?.[0]?.translation_text ?? "";
-  };
-  return {
-    model: m,
-    async generate(msgs, o = {}) {
-      if (task !== "text-generation") { const r = await runTask(task === "summarization" ? "summarize" : "translate", msgs[msgs.length - 1].content); o.onToken?.(r); return r; }
-      let out = "";
-      const streamer = new t.TextStreamer(pipe.tokenizer, { skip_prompt: true, skip_special_tokens: true, callback_function: (s: string) => { if (o.signal?.aborted) return; out += s; o.onToken?.(out); } });
-      const r = await pipe(msgs, { max_new_tokens: o.maxTokens ?? 512, do_sample: false, streamer });
-      const g = r?.[0]?.generated_text; const final = Array.isArray(g) ? g[g.length - 1]?.content ?? out : out;
-      return final || out;
-    },
-    task: runTask,
-    async unload() { await pipe.dispose?.(); },
-  };
+  const w = new Worker(new URL("../../workers/transformers.worker.ts", import.meta.url), { type: "module" });
+  let rid = 0;
+  const pending = new Map<number, { res: (s: string) => void; rej: (e: Error) => void; onToken?: (s: string) => void }>();
+  return new Promise<Engine>((resolve, reject) => {
+    let ready = false;
+    w.onerror = (e) => { console.error("[engine] transformers worker error", e.message || e); const err = new Error(e.message || "worker failed"); if (!ready) { w.terminate(); reject(err); } for (const p of pending.values()) p.rej(err); pending.clear(); };
+    w.onmessage = (ev: MessageEvent) => {
+      const d = ev.data;
+      if (d.type === "progress") onProgress({ progress: d.total ? d.loaded / d.total : 0, text: `Downloading ${m.name}… ${Math.round(d.loaded / 1048576)} / ${Math.round(d.total / 1048576)} MB` });
+      else if (d.type === "warn") console.warn("[engine]", d.message);
+      else if (d.type === "ready") { ready = true; onProgress({ progress: 1, text: `${m.name} ready` }); resolve(engine); }
+      else if (d.type === "token") pending.get(d.rid)?.onToken?.(d.full);
+      else if (d.type === "done") { pending.get(d.rid)?.res(d.out); pending.delete(d.rid); }
+      else if (d.type === "error") {
+        console.error("[engine] transformers worker:", d.message);
+        if (!ready) { w.terminate(); reject(new Error(d.message)); return; }
+        const p = d.rid !== undefined ? pending.get(d.rid) : undefined; if (p) { p.rej(new Error(d.message)); pending.delete(d.rid); }
+      }
+    };
+    const call = (msg: Record<string, unknown>, onToken?: (s: string) => void) => new Promise<string>((res, rej) => { const id = ++rid; pending.set(id, { res, rej, onToken }); w.postMessage({ ...msg, rid: id }); });
+    const runTask = (kind: "summarize" | "translate", text: string) => call({ type: "task", kind, text });
+    const engine: Engine = {
+      model: m,
+      async generate(msgs, o = {}) {
+        if (task !== "text-generation") { const r = await runTask(task === "summarization" ? "summarize" : "translate", msgs[msgs.length - 1].content); o.onToken?.(r); return r; }
+        const stop = () => w.postMessage({ type: "abort" }); o.signal?.addEventListener("abort", stop);
+        try { return await call({ type: "gen", msgs, maxTokens: o.maxTokens ?? 512 }, (s) => { if (!o.signal?.aborted) o.onToken?.(s); }); }
+        finally { o.signal?.removeEventListener("abort", stop); }
+      },
+      task: runTask,
+      async unload() { w.terminate(); },
+    };
+    w.postMessage({ type: "load", id: m.id, task, dtype: m.dtype ?? "q4" });
+  });
 }

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { CHAT_SYSTEM, CHAT_LOAD_TIMEOUT, pickChatModel, parseInline } from "@/lib/chatPrompt";
+import { CHAT_SYSTEM, CHAT_LOAD_TIMEOUT, CHAT_MODELS, pickChatModel, parseInline } from "@/lib/chatPrompt";
 import type { Engine } from "@/lib/studio/engine";
 import type { Msg } from "@/lib/studio/prompts";
 
@@ -43,7 +43,15 @@ export function ChatWidget() {
         const id = pickChatModel({ webgpu: gpu.ok, mobile, memGB: nav.deviceMemory });
         let timer: ReturnType<typeof setTimeout> | undefined;
         const timeout = new Promise<never>((_, rej) => { timer = setTimeout(() => rej(new Error("timeout")), CHAT_LOAD_TIMEOUT); });
-        try { eng.current = await Promise.race([e.loadEngine(id, () => {}), timeout]); } finally { clearTimeout(timer); }
+        const load = async () => {
+          try { return await e.loadEngine(id, () => {}); }
+          catch (x) {
+            if (id === CHAT_MODELS.small) throw x;
+            console.warn("[chat] GPU model failed, falling back to the CPU model", x); // quiet fallback, no error shown
+            return await e.loadEngine(CHAT_MODELS.small, () => {});
+          }
+        };
+        try { eng.current = await Promise.race([load(), timeout]); } finally { clearTimeout(timer); }
         setStatus("ready"); return eng.current;
       } catch (x) {
         console.warn("[chat] model load failed", x);
