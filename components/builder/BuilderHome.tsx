@@ -6,6 +6,8 @@ import { track } from "@vercel/analytics";
 import { listProjects, saveProject, deleteProject, getAsset, putAsset, clearAll } from "@/lib/builder/db";
 import type { Project } from "@/lib/builder/types";
 import { exportZip } from "./exportZip";
+import { suggestFromName, type Suggestion } from "@/lib/builder/nameSuggest";
+import NameSuggestions from "./NameSuggestions";
 
 export default function BuilderHome() {
   const [projects, setProjects] = useState<Project[] | null>(null);
@@ -15,10 +17,15 @@ export default function BuilderHome() {
   const [font, setFont] = useState("");
   const [style, setStyle] = useState<"" | "rounded" | "soft" | "sharp">("");
   const [mode, setMode] = useState<"auto" | "light" | "dark">("auto");
+  const [picked, setPicked] = useState<Suggestion | null>(null);
+  const [aiSugs, setAiSugs] = useState<Suggestion[] | null>(null);
+  const sugs = aiSugs ?? suggestFromName(name);
+  const pick = (s: Suggestion) => { setPicked(s); setColor(s.color); track("builder_name_suggest", { topic: s.topic, template: s.template, source: s.source }); document.getElementById(`tpl-${s.template}`)?.scrollIntoView({ behavior: "smooth", block: "center" }); };
   const refresh = () => listProjects().then(setProjects).catch((e) => setErr("Could not open browser storage (IndexedDB): " + e));
   useEffect(() => { refresh(); }, []);
   const create = async (tpl: string) => {
-    const p = createProject(tpl, name, { primary: color || undefined, font: font || undefined, style: style || undefined, mode });
+    const content = picked && picked.template === tpl ? { ...picked.content, brand: name.trim() || picked.content.brand } : undefined;
+    const p = createProject(tpl, name, { primary: color || undefined, font: font || undefined, style: style || undefined, mode, content });
     await saveProject(p); location.href = `/builder/edit?id=${p.id}`;
   };
   const rename = async (p: Project) => { const n = prompt("New project name", p.name); if (n && n.trim()) { await saveProject({ ...p, name: n.trim().slice(0, 80), updatedAt: Date.now() }); refresh(); } };
@@ -33,7 +40,8 @@ export default function BuilderHome() {
       {err && <div className="alert alert-error">{err}</div>}
       <section className="tool-panel" aria-labelledby="new-h">
         <h2 id="new-h" style={{ fontSize: "1.5rem" }}>New project</h2>
-        <div className="field" style={{ maxWidth: 420 }}><label htmlFor="pname">Project / site name (optional)</label><input id="pname" type="text" maxLength={80} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Sunrise Bakery" /></div>
+        <div className="field" style={{ maxWidth: 420 }}><label htmlFor="pname">Project / site name (optional)</label><input id="pname" type="text" maxLength={80} value={name} onChange={(e) => { setName(e.target.value); setAiSugs(null); }} placeholder="e.g. Olibea, Sunrise Bakery" /></div>
+        <NameSuggestions name={name} suggestions={sugs} picked={picked} onPick={pick} onAi={setAiSugs} onCreate={(s) => create(s.template)} />
         <div className="b-opts">
           <div className="field"><label htmlFor="opt-color">Brand color</label><div style={{ display: "flex", gap: 8 }}><input id="opt-color" type="color" value={color || "#1f6feb"} onChange={(e) => setColor(e.target.value)} aria-label="Brand color" />{color ? <button className="btn btn-ghost btn-sm" onClick={() => setColor("")}>Template default</button> : <span className="muted" style={{ alignSelf: "center", fontSize: ".85rem" }}>Template default</span>}</div></div>
           <div className="field"><label htmlFor="opt-font">Font</label><select id="opt-font" value={font} onChange={(e) => setFont(e.target.value)}><option value="">Template default</option>{Object.keys(FONT_CHOICES).map((f) => <option key={f}>{f}</option>)}</select></div>
@@ -42,7 +50,8 @@ export default function BuilderHome() {
         </div>
         <div className="grid grid-3" style={{ marginTop: 16 }}>
           {TEMPLATE_LIST.map((t) => (
-            <div key={t.id} className="card" style={{ boxShadow: "none" }}>
+            <div key={t.id} id={`tpl-${t.id}`} className="card" style={{ boxShadow: "none", outline: picked?.template === t.id ? `3px solid ${picked.color}` : undefined }}>
+              {picked?.template === t.id && <span className="badge" style={{ background: picked.color, color: "#fff", padding: "2px 8px", borderRadius: 999, fontSize: ".75rem", float: "right" }}>Suggested · copy pre-filled</span>}
               <div className="icon-sq" aria-hidden="true" style={{ background: color || t.primary, color: "#fff" }}>{t.name.slice(0, 2)}</div><h3>{t.name}</h3><p className="muted">{t.description}</p>
               <button className="btn btn-dark btn-sm" onClick={() => create(t.id)}>Use {t.name}</button>
             </div>
