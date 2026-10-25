@@ -1,0 +1,5 @@
+import type { MetadataRoute } from "next";
+import { TOOLS } from "@/lib/tools";
+export default function sitemap(): MetadataRoute.Sitemap {
+  return ["", "/tools", "/builder", "/about", "/privacy", "/terms", ...TOOLS.map((t) => `/tools/${t.slug}`)].map((p) => ({ url: `https://goai.foo${p}` }));
+}
