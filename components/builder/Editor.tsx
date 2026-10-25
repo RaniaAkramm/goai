@@ -1,4 +1,5 @@
 "use client";
+import { track } from "@vercel/analytics";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -150,7 +151,7 @@ export default function Editor() {
   const doExport = async () => {
     const r = checkProject(p, { jsSyntax: jsSyntaxCheck }); setReport(r);
     if (r.errors.length && !confirm(`Check Project found ${r.errors.length} error(s). The exported project may not work correctly. Export anyway?`)) return;
-    await exportZip(p); setMsg({ kind: "ok", text: "ZIP exported." });
+    await exportZip(p); track("builder_export"); setMsg({ kind: "ok", text: "ZIP exported." });
   };
   const applySel = (props: Partial<ElementProps>) => { if (sel !== null) update((x) => ({ ...x, files: { ...x.files, [page]: applyElement(x.files[page], sel, props) } }), true); };
 

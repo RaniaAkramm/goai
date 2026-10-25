@@ -8,6 +8,7 @@ const NAV = [
   { href: "/", label: "Home", icon: "⌂" },
   { href: "/tools", label: "Tools", icon: "⚒" },
   { href: "/builder", label: "Builder", icon: "▦" },
+  { href: "/studio", label: "Studio", icon: "✦" },
   { href: "/about", label: "About", icon: "i" },
 ];
 
@@ -30,7 +31,7 @@ export function Header() {
           <nav aria-label="Main" className="top-nav">
             {NAV.map((n) => <Link key={n.href} href={n.href} className={active(n.href) ? "active" : ""} aria-current={active(n.href) ? "page" : undefined}>{n.label}</Link>)}
           </nav>
-          <Link href="/tools" className="btn btn-dark btn-sm hide-sm">Open tools</Link>
+          <Link href="/studio" className="btn btn-dark btn-sm hide-sm">Try AI Studio</Link>
         </div>
       </header>
       <nav aria-label="Mobile" className="bottom-nav">

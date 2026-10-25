@@ -5,6 +5,7 @@ import { HeroArt } from "@/components/HeroArt";
 const SERVICES = [
   { icon: "⚒", title: "Developer tools", text: "Eight everyday utilities — JSON, CSV, Base64, diff, regex, hashing and more — that run entirely in your browser.", href: "/tools", cta: "Browse tools" },
   { icon: "▦", title: "Project Builder", text: "Start from a responsive template, edit visually or in code, preview on any screen size and export a ZIP.", href: "/builder", cta: "Open the builder" },
+  { icon: "✦", title: "AI Studio", text: "Private AI chat, a code assistant, text tools and an AI website generator — open models running on your own device.", href: "/studio", cta: "Open AI Studio" },
   { icon: "⌂", title: "Local-first by design", text: "No sign-up, no uploads. Your inputs and projects stay in this browser unless you export them.", href: "/privacy", cta: "Read the privacy notes" },
 ];
 const STEPS = [
@@ -22,21 +23,21 @@ export default function Home() {
         <div className="hero-grid">
           <div>
             <span className="badge">Free · No account · In-browser</span>
-            <h1 style={{ marginTop: 18 }}>Developer tools that <span className="mark">stay on your device.</span></h1>
-            <p className="lead">GoAI.foo bundles fast, private utilities and a local-first website builder. Format, convert, compare, test and ship — without sending your data anywhere.</p>
+            <h1 style={{ marginTop: 18 }}>AI & developer tools that <span className="mark">stay on your device.</span></h1>
+            <p className="lead">GoAI.foo bundles fast, private utilities, a local-first website builder and an AI Studio that runs open models in your browser. Format, convert, compare, test and ship — without sending your data anywhere.</p>
             <div className="cta-row">
               <Link href="/tools" className="btn btn-dark">Explore the tools</Link>
-              <Link href="/builder" className="btn btn-outline">Build a project</Link>
+              <Link href="/studio" className="btn btn-outline">Try AI Studio</Link>
             </div>
-            <ul className="pill-list" aria-label="Highlights"><li>8 working tools</li><li>5 site templates</li><li>ZIP export</li><li>Works offline once loaded</li></ul>
+            <ul className="pill-list" aria-label="Highlights"><li>8 working tools</li><li>Local AI Studio</li><li>5 rich site templates</li><li>ZIP export</li><li>Works offline once loaded</li></ul>
           </div>
           <HeroArt />
         </div>
       </section>
 
       <section className="section container" aria-labelledby="svc">
-        <div className="section-head"><h2 id="svc">What you can do here</h2><p className="muted">Three parts, one simple rule: your work never leaves the browser unless you choose to export it.</p></div>
-        <div className="grid grid-3">
+        <div className="section-head"><h2 id="svc">What you can do here</h2><p className="muted">Four parts, one simple rule: your work never leaves the browser unless you choose to export it.</p></div>
+        <div className="grid grid-2">
           {SERVICES.map((s, i) => (
             <article key={s.title} className={`card ${i === 1 ? "card-dark" : ""}`}>
               <div className="icon-sq" aria-hidden="true">{s.icon}</div>

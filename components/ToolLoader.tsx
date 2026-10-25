@@ -1,5 +1,7 @@
 "use client";
 import dynamic from "next/dynamic";
+import { useEffect } from "react";
+import { track } from "@vercel/analytics";
 const loading = () => <div className="tool-panel" aria-busy="true">Loading tool…</div>;
 const MAP = {
   "json-formatter": dynamic(() => import("./tools/JsonFormatter"), { ssr: false, loading }),
@@ -13,5 +15,6 @@ const MAP = {
 } as const;
 export function ToolLoader({ slug }: { slug: string }) {
   const C = MAP[slug as keyof typeof MAP];
+  useEffect(() => { if (C) track("tool_used", { tool: slug }); }, [slug, C]);
   return C ? <C /> : null;
 }
