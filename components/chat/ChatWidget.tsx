@@ -1,10 +1,13 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { CHAT_SYSTEM, CHAT_LOAD_TIMEOUT, CHAT_MODELS, pickChatModel, parseInline } from "@/lib/chatPrompt";
+import { route, factsPrompt, cleanLinks, grounded, SUGGESTIONS, KB, type KBLink } from "@/lib/chatKB";
+import { dedupeRepeats } from "@/lib/chatPrompt";
+import { CHAT_LOAD_TIMEOUT, CHAT_MODELS, pickChatModel, parseInline } from "@/lib/chatPrompt";
 import type { Engine } from "@/lib/studio/engine";
 import type { Msg } from "@/lib/studio/prompts";
 
+type UMsg = Msg & { links?: KBLink[]; chips?: string[] };
 type Status = "idle" | "loading" | "ready" | "error";
 const GREETING = "Hi! I'm the GoAI.foo assistant. Ask me about the developer tools, AI Studio or the Project Builder.";
 
@@ -16,7 +19,7 @@ function Rich({ text }: { text: string }) {
 
 export function ChatWidget() {
   const [open, setOpen] = useState(false);
-  const [msgs, setMsgs] = useState<Msg[]>([]);
+  const [msgs, setMsgs] = useState<UMsg[]>([]);
   const [input, setInput] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [err, setErr] = useState("");
@@ -63,23 +66,27 @@ export function ChatWidget() {
     return loading.current;
   }
 
-  async function answer(next: Msg[]) {
+  async function answer(next: UMsg[]) {
+    const q = next[next.length - 1].content; const r = route(q);
+    if (r.kind !== "model") { setMsgs([...next, { role: "assistant", content: r.text, links: r.links, chips: r.chips }]); return; } // instant, no model needed
     setBusy(true);
     const e = await ensureEngine(); if (!e) { setBusy(false); return; }
-    const { trimHistory } = await import("@/lib/studio/prompts");
+    const top = r.facts[0]; const extra = { links: top.links, chips: (top.related ?? []).map((id) => KB.find((k) => k.id === id)?.title).filter(Boolean).slice(0, 3) as string[] };
     setMsgs([...next, { role: "assistant", content: "" }]);
     abort.current = new AbortController();
     try {
-      const out = await e.generate(trimHistory([{ role: "system", content: CHAT_SYSTEM }, ...next], 5000), { maxTokens: 320, temperature: 0.4, signal: abort.current.signal,
-        onToken: (full) => setMsgs([...next, { role: "assistant", content: full }]) });
-      setMsgs([...next, { role: "assistant", content: out || "(no reply)" }]);
-    } catch (x) { setMsgs([...next, { role: "assistant", content: "Sorry, something went wrong: " + String(x).slice(0, 100) }]); }
+      const out = await e.generate([{ role: "system", content: factsPrompt(r.facts) }, { role: "user", content: q }], { maxTokens: 160, temperature: 0.2, signal: abort.current.signal,
+        onToken: (full) => setMsgs([...next, { role: "assistant", content: cleanLinks(dedupeRepeats(full)) }]) });
+      const g = cleanLinks(grounded(dedupeRepeats(out || ""), r.facts, q)); // drop anything the facts do not support
+      setMsgs([...next, { role: "assistant", content: g.length >= 25 ? g : top.answer, ...extra }]);
+    } catch (x) { setMsgs([...next, { role: "assistant", content: top.answer, ...extra }]); console.warn("[chat] generate failed, showing KB answer", x); }
     finally { setBusy(false); abort.current = null; }
   }
-  function send() {
-    const q = input.trim(); if (!q || busy) return;
-    setInput(""); const next: Msg[] = [...msgs, { role: "user", content: q }]; setMsgs(next); void answer(next); // queued until the model is ready
+  function ask(q: string) {
+    q = q.trim(); if (!q || busy) return;
+    const next: UMsg[] = [...msgs, { role: "user", content: q }]; setMsgs(next); void answer(next); // queued until the model is ready
   }
+  function send() { const q = input.trim(); if (!q || busy) return; setInput(""); ask(q); }
   function retry() {
     const last = msgs[msgs.length - 1];
     if (last?.role === "user") void answer(msgs); else void ensureEngine();
@@ -103,9 +110,14 @@ export function ChatWidget() {
           </header>
           <div className="cw-list" ref={list} aria-live="polite">
             <div className="cw-msg assistant"><Rich text={GREETING} /></div>
-            {msgs.map((m, i) => <div key={i} className={"cw-msg " + m.role}>{m.content ? <Rich text={m.content} /> : <span className="cw-dots" aria-label="Thinking"><i/><i/><i/></span>}</div>)}
+            {!msgs.length && <div className="cw-chips">{SUGGESTIONS.map((c) => <button key={c} type="button" className="cw-chip" onClick={() => ask(c)}>{c}</button>)}</div>}
+            {msgs.map((m, i) => <div key={i} className="cw-row">
+              <div className={"cw-msg " + m.role}>{m.content ? <Rich text={m.content} /> : <span className="cw-dots" aria-label="Thinking"><i/><i/><i/></span>}
+                {!!m.links?.length && <div className="cw-links">{m.links.map((l) => <Link key={l.href} href={l.href} className="cw-link" onClick={() => setOpen(false)}>{l.label} →</Link>)}</div>}</div>
+              {i === msgs.length - 1 && !busy && !!m.chips?.length && <div className="cw-chips">{m.chips.map((c) => <button key={c} type="button" className="cw-chip" onClick={() => ask(c)}>{c}</button>)}</div>}
+            </div>)}
             {waiting && <div className="cw-msg assistant"><span className="cw-dots" aria-label="Thinking"><i/><i/><i/></span></div>}
-            {status === "loading" && <div className="cw-calm">Runs privately on your device: a small AI model loads once, then it&apos;s instant.</div>}
+            {status === "loading" && busy && <div className="cw-calm">Runs privately on your device: a small AI model loads once, then it&apos;s instant.</div>}
             {status === "error" && <div className="cw-note err">{err} <button type="button" className="btn btn-ghost btn-sm cw-retry" onClick={retry}>Retry</button></div>}
           </div>
           <form className="cw-form" onSubmit={(e) => { e.preventDefault(); send(); }}>

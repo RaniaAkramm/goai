@@ -1,0 +1,72 @@
+== desktop chip instant 66ms
+[desktop 1] 0.3s rep=0 Q: What is GoAI.foo?
+   A: GoAI.foo is a free, local-first developer platform. It has 8 developer tools, an AI Studio that runs open AI models in your browser, and a Project Builder for making websites from templates. Everything runs on your device: no sign-up and no uploads. Developer 
+[desktop 2] 0.3s rep=0 Q: which tools do you have
+   A: There are 8 free developer tools: - JSON Formatter & Validator: Format, minify and validate JSON with readable error positions. - JSON ⇄ CSV Converter: Convert JSON arrays to CSV and back, with correct quoting and flattening. - Base64 Encode / Decode: UTF-8 sa
+[desktop 3] 0.3s rep=0 Q: how do i pretty print json
+   A: JSON Formatter & Validator: Format, minify and validate JSON with readable error positions. How to use it: Paste your JSON, then choose Format (pretty-print) or Minify. If the JSON is invalid it shows the line and column of the error. It runs entirely in your 
+[desktop 4] 0.3s rep=0 Q: convert my excel csv into json
+   A: JSON ⇄ CSV Converter: Convert JSON arrays to CSV and back, with correct quoting and flattening. How to use it: Paste a JSON array to get CSV (nested fields are flattened), or paste CSV to get JSON. Quoting is handled correctly. It runs entirely in your browser
+[desktop 5] 0.3s rep=0 Q: is it really free?
+   A: Yes, GoAI.foo is completely free. There is no account, no sign-up and no paid API, because everything runs on your own device. Explore the tools →
+[desktop 6] 0.3s rep=0 Q: do you upload my data to a server
+   A: No, nothing is uploaded. GoAI.foo is local-first: tools, AI models and your projects all run and stay in your browser. Nothing you type or paste is sent to a server. Privacy policy →
+[desktop 7] 0.3s rep=0 Q: Can I make a landing page?
+   A: The Project Builder lets you make a website from a template (Business, E-commerce, Blog, Portfolio, Dashboard or Blank). You edit and reorder sections, preview it, and export a ZIP of plain HTML/CSS to host anywhere. Projects are saved locally in your browser.
+[desktop 8] 0.3s rep=0 Q: how do I host the site I made
+   A: Open the Project Builder, pick a template, then edit the text, images and sections and watch the live preview. When you are happy, export a ZIP and upload it to any static host. GoAI.foo itself does not host your site. Open Project Builder →
+[desktop 9] 0.3s rep=0 Q: jsn formater
+   A: JSON Formatter & Validator: Format, minify and validate JSON with readable error positions. How to use it: Paste your JSON, then choose Format (pretty-print) or Minify. If the JSON is invalid it shows the line and column of the error. It runs entirely in your 
+[desktop 10] 0.3s rep=0 Q: sha256 of a file
+   A: Hash Generator: SHA-256, SHA-384 and SHA-512 hashes of text or files via Web Crypto. How to use it: Type text or pick a file to get its SHA-256, SHA-384 and SHA-512 hashes, computed locally with Web Crypto. It runs entirely in your browser. Open Hash Generator
+[desktop 11] 0.3s rep=0 Q: does it work without internet
+   A: Once a page and its AI model have loaded, they keep working offline, because everything runs in your browser. The first load needs a connection. AI Studio →
+[desktop 12] 0.3s rep=0 Q: what's the weather in Paris
+   A: I can only help with GoAI.foo: its free developer tools, AI Studio and the Project Builder. Here are some things you can ask: Developer tools → AI Studio →
+[desktop 13] 0.4s rep=0 Q: ما هو هذا الموقع؟
+   A: Thanks for your message! GoAI.foo is available in English only for now, so please ask in English. You can start with one of these questions:
+[desktop 14] 0.3s rep=0 Q: هل الموقع مجاني
+   A: Thanks for your message! GoAI.foo is available in English only for now, so please ask in English. You can start with one of these questions:
+[desktop 15] 5.3s rep=0 Q: is the builder free
+   A: The project builder is free for everyone. Open Project Builder →
+[desktop 16] 0.3s rep=0 Q: can I export json from the builder
+   A: In the Project Builder, use Export to download a ZIP with plain HTML and CSS files for your site. Upload that folder to any static host. The Builder exports a ZIP, not JSON; for JSON files use the JSON tools. Open Project Builder → JSON Formatter →
+[desktop 17] 0.3s rep=0 Q: what can I do on my iphone with the studio
+   A: On a phone you can use all the developer tools and the Project Builder. For AI, phones get a small, light model; bigger models work best on a desktop with a good GPU. Models →
+desktop page errors: none
+== mobile chip instant 71ms
+[mobile 1] 0.3s rep=0 Q: What is GoAI.foo?
+   A: GoAI.foo is a free, local-first developer platform. It has 8 developer tools, an AI Studio that runs open AI models in your browser, and a Project Builder for making websites from templates. Everything runs on your device: no sign-up and no uploads. Developer 
+[mobile 2] 0.3s rep=0 Q: which tools do you have
+   A: There are 8 free developer tools: - JSON Formatter & Validator: Format, minify and validate JSON with readable error positions. - JSON ⇄ CSV Converter: Convert JSON arrays to CSV and back, with correct quoting and flattening. - Base64 Encode / Decode: UTF-8 sa
+[mobile 3] 0.3s rep=0 Q: how do i pretty print json
+   A: JSON Formatter & Validator: Format, minify and validate JSON with readable error positions. How to use it: Paste your JSON, then choose Format (pretty-print) or Minify. If the JSON is invalid it shows the line and column of the error. It runs entirely in your 
+[mobile 4] 0.3s rep=0 Q: convert my excel csv into json
+   A: JSON ⇄ CSV Converter: Convert JSON arrays to CSV and back, with correct quoting and flattening. How to use it: Paste a JSON array to get CSV (nested fields are flattened), or paste CSV to get JSON. Quoting is handled correctly. It runs entirely in your browser
+[mobile 5] 0.3s rep=0 Q: is it really free?
+   A: Yes, GoAI.foo is completely free. There is no account, no sign-up and no paid API, because everything runs on your own device. Explore the tools →
+[mobile 6] 0.3s rep=0 Q: do you upload my data to a server
+   A: No, nothing is uploaded. GoAI.foo is local-first: tools, AI models and your projects all run and stay in your browser. Nothing you type or paste is sent to a server. Privacy policy →
+[mobile 7] 0.3s rep=0 Q: Can I make a landing page?
+   A: The Project Builder lets you make a website from a template (Business, E-commerce, Blog, Portfolio, Dashboard or Blank). You edit and reorder sections, preview it, and export a ZIP of plain HTML/CSS to host anywhere. Projects are saved locally in your browser.
+[mobile 8] 0.3s rep=0 Q: how do I host the site I made
+   A: Open the Project Builder, pick a template, then edit the text, images and sections and watch the live preview. When you are happy, export a ZIP and upload it to any static host. GoAI.foo itself does not host your site. Open Project Builder →
+[mobile 9] 0.3s rep=0 Q: jsn formater
+   A: JSON Formatter & Validator: Format, minify and validate JSON with readable error positions. How to use it: Paste your JSON, then choose Format (pretty-print) or Minify. If the JSON is invalid it shows the line and column of the error. It runs entirely in your 
+[mobile 10] 0.3s rep=0 Q: sha256 of a file
+   A: Hash Generator: SHA-256, SHA-384 and SHA-512 hashes of text or files via Web Crypto. How to use it: Type text or pick a file to get its SHA-256, SHA-384 and SHA-512 hashes, computed locally with Web Crypto. It runs entirely in your browser. Open Hash Generator
+[mobile 11] 0.3s rep=0 Q: does it work without internet
+   A: Once a page and its AI model have loaded, they keep working offline, because everything runs in your browser. The first load needs a connection. AI Studio →
+[mobile 12] 0.3s rep=0 Q: what's the weather in Paris
+   A: I can only help with GoAI.foo: its free developer tools, AI Studio and the Project Builder. Here are some things you can ask: Developer tools → AI Studio →
+[mobile 13] 0.3s rep=0 Q: ما هو هذا الموقع؟
+   A: Thanks for your message! GoAI.foo is available in English only for now, so please ask in English. You can start with one of these questions:
+[mobile 14] 0.3s rep=0 Q: هل الموقع مجاني
+   A: Thanks for your message! GoAI.foo is available in English only for now, so please ask in English. You can start with one of these questions:
+[mobile 15] 4.9s rep=0 Q: is the builder free
+   A: The project builder is free for everyone. Open Project Builder →
+[mobile 16] 0.3s rep=0 Q: can I export json from the builder
+   A: In the Project Builder, use Export to download a ZIP with plain HTML and CSS files for your site. Upload that folder to any static host. The Builder exports a ZIP, not JSON; for JSON files use the JSON tools. Open Project Builder → JSON Formatter →
+[mobile 17] 0.3s rep=0 Q: what can I do on my iphone with the studio
+   A: On a phone you can use all the developer tools and the Project Builder. For AI, phones get a small, light model; bigger models work best on a desktop with a good GPU. Models →
+mobile page errors: none
