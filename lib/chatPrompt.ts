@@ -1,5 +1,16 @@
 import { TOOLS } from "./tools";
 
+/** Small models loop; drop any sentence/paragraph that repeats an earlier one (cut from the first repeat on). */
+export function dedupeRepeats(text: string): string {
+  const parts = text.split(/(?<=[.!?])\s+|\n+/); const seen = new Set<string>(); let cut = -1, pos = 0;
+  for (const p of parts) {
+    const at = text.indexOf(p, pos); const k = p.trim().toLowerCase();
+    if (k.length > 15 && seen.has(k)) { cut = at; break; }
+    if (k) seen.add(k); pos = at + p.length;
+  }
+  return cut < 0 ? text : text.slice(0, cut).trimEnd();
+}
+
 /** System prompt for the floating site assistant. Kept short: small local models have small context windows. */
 export const CHAT_SYSTEM = `You are the GoAI.foo assistant, a small AI model running privately in the visitor's browser. Answer in short, friendly English (2-5 sentences). When relevant, link pages as Markdown links like [JSON Formatter](/tools/json-formatter).
 

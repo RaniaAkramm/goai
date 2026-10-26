@@ -8,3 +8,12 @@ describe("pickChatModel", () => {
   it("capable desktop gets Qwen", () => expect(pickChatModel({ webgpu: true, mobile: false, memGB: 8 })).toBe(CHAT_MODELS.desktop));
   it("small model under 150MB", () => expect(getModel(CHAT_MODELS.small)!.sizeMB).toBeLessThan(150));
 });
+
+import { dedupeRepeats } from "../lib/chatPrompt";
+describe("dedupeRepeats", () => {
+  it("cuts looping paragraphs", () => {
+    const a = "Project Builder makes sites. It is free to use.";
+    expect(dedupeRepeats(a + "\n\n" + a + "\n\n" + a)).toBe(a);
+  });
+  it("keeps normal text", () => { expect(dedupeRepeats("One thing here. Another thing.")).toBe("One thing here. Another thing."); });
+});

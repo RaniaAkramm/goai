@@ -1,5 +1,6 @@
 /// <reference lib="webworker" />
 // Runs Transformers.js (ONNX/WASM) off the main thread so the page stays responsive while the model loads and generates.
+import { dedupeRepeats } from "../lib/chatPrompt";
 import { pipeline, TextStreamer, InterruptableStoppingCriteria } from "@huggingface/transformers";
 
 type In =
@@ -37,10 +38,10 @@ ctx.onmessage = async (ev: MessageEvent<In>) => {
       ctx.postMessage({ type: "ready" });
     } else if (m.type === "gen") {
       stopper.reset(); let out = "";
-      const streamer = new TextStreamer(pipe.tokenizer, { skip_prompt: true, skip_special_tokens: true, callback_function: (s: string) => { out += s; ctx.postMessage({ type: "token", rid: m.rid, full: out }); } });
-      const r = await pipe(m.msgs, { max_new_tokens: m.maxTokens, do_sample: false, streamer, stopping_criteria: stopper });
+      const streamer = new TextStreamer(pipe.tokenizer, { skip_prompt: true, skip_special_tokens: true, callback_function: (s: string) => { out += s; const d = dedupeRepeats(out); if (d.length < out.length) { out = d; stopper.interrupt(); } ctx.postMessage({ type: "token", rid: m.rid, full: out }); } });
+      const r = await pipe(m.msgs, { max_new_tokens: m.maxTokens, do_sample: false, repetition_penalty: 1.1, streamer, stopping_criteria: stopper });
       const g = r?.[0]?.generated_text; const final = Array.isArray(g) ? g[g.length - 1]?.content ?? out : out;
-      ctx.postMessage({ type: "done", rid: m.rid, out: final || out });
+      ctx.postMessage({ type: "done", rid: m.rid, out: dedupeRepeats(final || out) });
     } else if (m.type === "task") {
       const r = await pipe(m.text.slice(0, 3000), m.kind === "summarize" ? { max_new_tokens: 160 } : {});
       ctx.postMessage({ type: "done", rid: m.rid, out: r?.[0]?.summary_text ?? r?.[0]?.translation_text ?? "" });
